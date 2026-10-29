@@ -14,7 +14,7 @@ class AgendaError(Exception):
     """Base para os erros do sistema de agenda."""
 
 class EntradaInvalidaError(AgendaError, ValueError):
-    """Dados de entrada inválidos."""
+    """Entrada de dados inválidos."""
 
 class ConflitoDeHorarioError(AgendaError):
     """Horário indisponível."""
@@ -34,6 +34,7 @@ class Atendimento:
 
 # Lista global temporária 
 agendamentos: list[Atendimento] = []
+
 
 def validar_formato_data(data):
     try:
@@ -128,23 +129,47 @@ def adicionar_agenda(paciente, profissional, data, hora, duracao):
         agendamentos.append(novo_atendimento)
         print("Atendimento marcado com sucesso para", paciente)
 
+def buscar_agendamento(paciente, data, hora):
+    for atendimento in agendamentos:
+        if (atendimento.paciente == paciente,
+            atendimento.data == data,
+            atendimento.hora == hora):
+            return atendimento
+    return None
+    
+def remarcar_agenda(paciente, data, hora, nova_data, nova_hora):
+
+    try: 
+        validar_formato_data(data)
+        #TODO validar_hora(hora)
+        validar_formato_data(nova_data)
+        #TODO validar_hora(nova_hora)
+    except ValueError as erro:
+        print(f"Dados inválidos: {erro}")
+
+    atendimento = buscar_agendamento(paciente, data, hora)
+
+    if atendimento is None:
+        raise AgendaError(
+            f"{paciente} não tem atendimento em {data} às {hora}h"
+        )
+
+    try: 
+        validar_horario_agendamento(hora, atendimento.duracao)
+        verificar_disponibilidade(atendimento.profissional, nova_data, nova_hora, atendimento.duracao)
+    
+    except ConflitoDeHorarioError as erro:
+        print(f"Agendamento recusado para {paciente}: {erro}")
+
+
+    else: 
+        atendimento.data = nova_data
+        atendimento.hora = nova_hora
+        print(f"Atendimento para {paciente} remarcado com sucesso!")
+
+
+
 """
-def rem(p, d, h, nd, nh):
-    # remarca o atendimento
-    for a in ag:
-        if a[0] == p and a[2] == d and a[3] == h:
-            ok = True
-            for b in ag:
-                if b[2] == nd and b[3] == nh and b[1] == a[1]:
-                    ok = False
-            if ok:
-                a[2] = nd
-                a[3] = nh
-                print("Remarcado")
-            else:
-                print("Horario ocupado")
-
-
 # def desmarcar(p, d, h):
 #     ag.remove(...)
 
@@ -161,12 +186,13 @@ def lst(d):
 add("Ana", "Dr. Silva", "2026-10-05", 9, 30)
 add("Bruno", "Dr. Silva", "2026-10-05", 9, 30)
 add("Carla", "Dra. Souza", "2026-10-05", 14, 60)
-rem("Ana", "2026-10-05", 9, "2026-10-06", 10)
+
 lst("2026-10-05")
 """
 
 if __name__ == "__main__":
     print("--- Cenário principal ---")
     adicionar_agenda("Ana",   "Dr. Silva",  "2026-10-05", 9, 30)   # ok
-    adicionar_agenda("Bruno", "Dr. Silva",  "2026-10-05", 9, 30)   # ❌ conflito (mesmo horário)
-    adicionar_agenda("Carla", "Dra. Souza", "2026-10-05", 14, 60)  # ok
+    #adicionar_agenda("Bruno", "Dr. Silva",  "2026-10-05", 9, 30)   # ❌ conflito (mesmo horário)
+    #adicionar_agenda("Carla", "Dra. Souza", "2026-10-05", 14, 60)  # ok
+    remarcar_agenda("Ana", "2026-10-15", 9, "2026-10-06", 10)
