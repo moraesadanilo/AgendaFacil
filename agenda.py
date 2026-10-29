@@ -47,7 +47,13 @@ def validar_formato_data(data):
             f"calendário, recebido: {data!r}"
         )
 
-    
+
+def validar_hora(hora):
+        if hora < INICIO_EXPEDIENTE or hora > ULTIMO_ATENDIMENTO:
+            raise EntradaInvalidaError(
+                f"{hora} está fora do horário do expediente.")
+
+
 def verificar_disponibilidade(profissional, data, hora, duracao):
     """Impede que o profissional tenha dois atendimentos no mesmo dia e horário."""
     
@@ -91,10 +97,6 @@ def validar_horario_agendamento(hora, duracao):
         raise ValueError(f"Duração inválida: Deve ser entre {DURACAO_BASE} "
                          f"e {DURACAO_MAXIMA} minutos, em múltiplos de {DURACAO_BASE}.")
 
-    if hora < INICIO_EXPEDIENTE or hora > ULTIMO_ATENDIMENTO:
-        raise EntradaInvalidaError(
-            f"{hora} está fora do horário do expediente.")
-
     if validar_atendimento_fim_expediente(hora, duracao) is False:
         raise ValueError(
             f"Horário fora do expediente: Duração de {duracao} min "
@@ -105,9 +107,10 @@ def validar_horario_agendamento(hora, duracao):
     return True
 
 
-def adicionar_agenda(paciente, profissional, data, hora, duracao):
+def adicionar_agendamento(paciente, profissional, data, hora, duracao):
     try: 
         validar_formato_data(data)
+        validar_hora(hora)
         validar_horario_agendamento(hora, duracao)
         verificar_disponibilidade(profissional, data, hora, duracao)
 
@@ -123,29 +126,34 @@ def adicionar_agenda(paciente, profissional, data, hora, duracao):
             data = data,
             hora = hora,
             duracao = duracao,
-            status = "MARCADO"
+            status = "AGENDADO"
         )
         
         agendamentos.append(novo_atendimento)
         print("Atendimento marcado com sucesso para", paciente)
 
+
 def buscar_agendamento(paciente, data, hora):
     for atendimento in agendamentos:
-        if (atendimento.paciente == paciente,
-            atendimento.data == data,
-            atendimento.hora == hora):
+        if (atendimento.paciente == paciente and
+            atendimento.data == data and
+            atendimento.hora == hora and 
+            atendimento.status == "AGENDADO"):
             return atendimento
     return None
-    
-def remarcar_agenda(paciente, data, hora, nova_data, nova_hora):
+
+
+
+def remarcar_agendamento(paciente, data, hora, nova_data, nova_hora):
 
     try: 
         validar_formato_data(data)
-        #TODO validar_hora(hora)
+        validar_hora(hora)
         validar_formato_data(nova_data)
-        #TODO validar_hora(nova_hora)
+        validar_hora(nova_hora)
     except ValueError as erro:
         print(f"Dados inválidos: {erro}")
+        return None
 
     atendimento = buscar_agendamento(paciente, data, hora)
 
@@ -160,6 +168,7 @@ def remarcar_agenda(paciente, data, hora, nova_data, nova_hora):
     
     except ConflitoDeHorarioError as erro:
         print(f"Agendamento recusado para {paciente}: {erro}")
+        return None
 
 
     else: 
@@ -168,31 +177,55 @@ def remarcar_agenda(paciente, data, hora, nova_data, nova_hora):
         print(f"Atendimento para {paciente} remarcado com sucesso!")
 
 
+def cancelar_agendamento(paciente, data, hora):
 
-"""
-# def desmarcar(p, d, h):
-#     ag.remove(...)
+    try: 
+        validar_formato_data(data)
+        validar_hora(hora)
+
+    except ValueError as erro:
+        print(f"Dados inválidos: {erro}")
+        return None
+
+    atendimento = buscar_agendamento(paciente, data, hora)
+
+    if atendimento is None:
+        raise AgendaError(
+            f"{paciente} não tem atendimento em {data} às {hora}h"
+        )
+    else:
+        atendimento.status = "CANCELADO"
+        print(f"Atendimento para {paciente} cancelado com sucesso!")
 
 
+def listar_agendamentos_data(data) ->list[Atendimento]:
+    
+    agendamentos_do_dia =[]
+    for atendimento in agendamentos:
+        if (atendimento.data == data and
+            atendimento.status == "AGENDADO"):
+            agendamentos_do_dia.append(atendimento)
+
+    return sorted(agendamentos_do_dia, key=lambda atendimento: atendimento.hora)
 
 
-def lst(d):
-    # lista os atendimentos do mes
-    for a in ag:
-        if a[2] == d:
-            print(a[3], a[0], a[1], a[5])
+def relatorio_agendamentos_por_data(data):
 
+    try: 
+        validar_formato_data(data)
 
-add("Ana", "Dr. Silva", "2026-10-05", 9, 30)
-add("Bruno", "Dr. Silva", "2026-10-05", 9, 30)
-add("Carla", "Dra. Souza", "2026-10-05", 14, 60)
+    except ValueError as erro:
+        print(f"Dados inválidos: {erro}")
+        return None
 
-lst("2026-10-05")
-"""
+    agendamentos_hoje = listar_agendamentos_data(data)
 
-if __name__ == "__main__":
-    print("--- Cenário principal ---")
-    adicionar_agenda("Ana",   "Dr. Silva",  "2026-10-05", 9, 30)   # ok
-    #adicionar_agenda("Bruno", "Dr. Silva",  "2026-10-05", 9, 30)   # ❌ conflito (mesmo horário)
-    #adicionar_agenda("Carla", "Dra. Souza", "2026-10-05", 14, 60)  # ok
-    remarcar_agenda("Ana", "2026-10-15", 9, "2026-10-06", 10)
+    if not agendamentos_hoje:
+        print(f"Nenhum agendamento ativo encontrado para {data}.")
+    else:
+        print(f"--- AGENDA DO DIA {data} ---")
+        for agendamento in agendamentos_hoje:
+            print(f"{agendamento.hora}h - " 
+                  f"Paciente: {agendamento.paciente} - "
+                  f"Profissional: {agendamento.profissional}")
+        
