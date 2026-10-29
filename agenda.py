@@ -10,6 +10,15 @@ DURACAO_BASE = 15
 DURACAO_MAXIMA = 120
 
 
+class AgendaError(Exception):
+    """Base para os erros do sistema de agenda."""
+
+class EntradaInvalidaError(AgendaError, ValueError):
+    """Dados de entrada inválidos."""
+
+class ConflitoDeHorarioError(AgendaError):
+    """Horário indisponível."""
+
 
 # 1. Definição do tipo para o atendimento, substituindo as listas por índices
 @dataclass
@@ -96,22 +105,28 @@ def validar_horario_agendamento(hora, duracao):
 
 
 def adicionar_agenda(paciente, profissional, data, hora, duracao):
-   
-    validar_formato_data(data)
-    validar_horario_agendamento(hora, duracao)
-    verificar_disponibilidade(profissional, data, hora, duracao)
-   
-    novo_atendimento = Atendimento(
-        paciente = paciente,
-        profissional = profissional,
-        data = data,
-        hora = hora,
-        duracao = duracao,
-        status = "MARCADO"
-    )
-    
-    agendamentos.append(novo_atendimento)
-    print("Atendimento marcado com sucesso para", paciente)
+    try: 
+        validar_formato_data(data)
+        validar_horario_agendamento(hora, duracao)
+        verificar_disponibilidade(profissional, data, hora, duracao)
+
+    except ConflitoDeHorarioError as erro:
+        print(f"Agendamento recusado para {paciente}: {erro}")
+    except ValueError as erro:
+        print(f"Dados inválidos para {paciente}: {erro}")
+
+    else:
+        novo_atendimento = Atendimento(
+            paciente = paciente,
+            profissional = profissional,
+            data = data,
+            hora = hora,
+            duracao = duracao,
+            status = "MARCADO"
+        )
+        
+        agendamentos.append(novo_atendimento)
+        print("Atendimento marcado com sucesso para", paciente)
 
 """
 def rem(p, d, h, nd, nh):
