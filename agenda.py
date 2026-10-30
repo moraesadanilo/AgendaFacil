@@ -20,7 +20,6 @@ class ConflitoDeHorarioError(AgendaError):
     """Horário indisponível."""
 
 
-# 1. Definição do tipo para o atendimento, substituindo as listas por índices
 @dataclass
 class Atendimento:
     paciente: str
@@ -31,8 +30,6 @@ class Atendimento:
     status: str = "LIVRE"
 
 
-
-# Lista global temporária 
 agendamentos: list[Atendimento] = []
 
 
@@ -52,24 +49,6 @@ def validar_hora(hora):
         if hora < INICIO_EXPEDIENTE or hora > ULTIMO_ATENDIMENTO:
             raise EntradaInvalidaError(
                 f"{hora} está fora do horário do expediente.")
-
-
-def verificar_disponibilidade(profissional, data, hora, duracao):
-    """Impede que o profissional tenha dois atendimentos no mesmo dia e horário."""
-    
-    inicio = hora * HORA_EM_MINUTOS
-    fim = inicio + duracao
-
-    for atendimento in agendamentos:
-        if (atendimento.data == data and atendimento.profissional == profissional):
-            
-            agendado_inicio = atendimento.hora * HORA_EM_MINUTOS
-            agendado_fim = agendado_inicio + atendimento.duracao
-
-            if inicio < agendado_fim and agendado_inicio < fim:
-                raise ValueError(f"Horario ocupado! Conflito com atendimento agendado às "
-                                 f"{atendimento.hora}h com duração de {atendimento.duracao} min."
-                                 )
 
 
 def validar_atendimento_fim_expediente(hora, duracao):
@@ -107,7 +86,45 @@ def validar_horario_agendamento(hora, duracao):
     return True
 
 
-def adicionar_agendamento(paciente, profissional, data, hora, duracao):
+def verificar_disponibilidade(profissional, data, hora, duracao):
+    """Impede que o profissional tenha dois atendimentos no mesmo dia e horário."""
+    
+    inicio = hora * HORA_EM_MINUTOS
+    fim = inicio + duracao
+
+    for atendimento in agendamentos:
+        if (atendimento.data == data and atendimento.profissional == profissional):
+            
+            agendado_inicio = atendimento.hora * HORA_EM_MINUTOS
+            agendado_fim = agendado_inicio + atendimento.duracao
+
+            if inicio < agendado_fim and agendado_inicio < fim:
+                raise ValueError(f"Horario ocupado! Conflito com atendimento agendado às "
+                                 f"{atendimento.hora}h com duração de {atendimento.duracao} min."
+                                 )
+
+
+def adicionar_agendamento(paciente, profissional, data, hora, duracao) -> None:
+    """Cria e registra um atendimento na agenda.
+
+    Valida o formato da data, horário do expediente e conflitos
+    de agenda antes de realizar a inserção.
+
+    Args:
+        paciente (str): Nome do paciente.
+        profissional (str): Nome do profissional.
+        data (str): Data do agendamento no formato AAAA-MM-DD.
+        hora (int): Hora de início, entre 8 e 17.
+        duracao (int): Duração em minutos, de 15 a 120, em múltiplos de 15.
+
+    Returns:
+        None
+
+    Raises:
+        EntradaInvalidaError: Se a data, hora ou duração forem inválidas.
+        ConflitoDeHorarioError: Se o profissional já possuir atendimento no horário.
+    """
+
     try: 
         validar_formato_data(data)
         validar_hora(hora)
@@ -134,6 +151,7 @@ def adicionar_agendamento(paciente, profissional, data, hora, duracao):
 
 
 def buscar_agendamento(paciente, data, hora):
+    
     for atendimento in agendamentos:
         if (atendimento.paciente == paciente and
             atendimento.data == data and
@@ -143,8 +161,26 @@ def buscar_agendamento(paciente, data, hora):
     return None
 
 
+def remarcar_agendamento(paciente, data, hora, nova_data, nova_hora) -> None:
+    """Altera nova data e/ou hora de um atendimento existente na agenda.
 
-def remarcar_agendamento(paciente, data, hora, nova_data, nova_hora):
+    Valida o formato da data, horário do expediente e conflitos
+    de agenda antes de localizar o agendamento e realizar a alteração.
+
+    Args:
+        paciente (str): Nome do paciente.
+        data (str): Data do agendamento atual no formato AAAA-MM-DD.
+        hora (int): Hora do agendamento atual, entre 8 e 17.
+        nova_data (str): Nova data do agendamento no formato AAAA-MM-DD.
+        nova_hora (int): Nova hora do agendamento, entre 8 e 17.        
+
+    Returns:
+        None
+
+    Raises:
+        EntradaInvalidaError: Se a data, hora ou duração forem inválidas.
+        ConflitoDeHorarioError: Se o profissional já possuir atendimento no horário.
+    """
 
     try: 
         validar_formato_data(data)
@@ -177,8 +213,26 @@ def remarcar_agendamento(paciente, data, hora, nova_data, nova_hora):
         print(f"Atendimento para {paciente} remarcado com sucesso!")
 
 
-def cancelar_agendamento(paciente, data, hora):
+def cancelar_agendamento(paciente, data, hora) -> None:
+    """Altera o statuas de um atendimento na agenda para cancelado.
 
+    Valida o formato da data, horário do expediente, antes de localizar 
+    e modificar o status do agendamento em questão.
+
+    Args:
+        paciente (str): Nome do paciente.
+        profissional (str): Nome do profissional.
+        data (str): Data do agendamento no formato AAAA-MM-DD.
+        hora (int): Hora de início, entre 8 e 17.
+        duracao (int): Duração em minutos, de 15 a 120, em múltiplos de 15.
+
+    Returns:
+        None
+
+    Raises:
+        EntradaInvalidaError: Se a data, hora ou duração forem inválidas.
+        ConflitoDeHorarioError: Se o profissional já possuir atendimento no horário.
+    """
     try: 
         validar_formato_data(data)
         validar_hora(hora)
@@ -199,6 +253,18 @@ def cancelar_agendamento(paciente, data, hora):
 
 
 def listar_agendamentos_data(data) ->list[Atendimento]:
+    """Lista os atendimentos marcados em um dia, na ordem de marcação.
+
+    Esta função assume que a data fornecida já foi validada previamente
+    (formato AAAA-MM-DD e existência no calendário).
+ 
+    Args:
+        data (str): Dia consultado, no formato AAAA-MM-DD.
+ 
+    Returns:
+        Lista de Atendimento do dia.
+        Lista vazia se não houver nenhum atendimento no dia pesquisado.
+    """
     
     agendamentos_do_dia =[]
     for atendimento in agendamentos:
@@ -209,7 +275,18 @@ def listar_agendamentos_data(data) ->list[Atendimento]:
     return sorted(agendamentos_do_dia, key=lambda atendimento: atendimento.hora)
 
 
-def relatorio_agendamentos_por_data(data):
+def relatorio_agendamentos_por_data(data) -> None:
+    """Gera e exibe em tela o texto formatado com atendimentos do dia.
+
+    Args:
+        data (str): Dia consultado, no formato AAAA-MM-DD.
+
+    Returns:
+        None
+
+    Raises:
+        EntradaInvalidaError: Se a data, hora ou duração forem inválidas.
+    """
 
     try: 
         validar_formato_data(data)
