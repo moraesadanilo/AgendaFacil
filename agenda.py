@@ -33,7 +33,9 @@ class Atendimento:
 agendamentos: list[Atendimento] = []
 
 
-def validar_formato_data(data):
+def _validar_formato_data(data) -> None:
+    """Valida se a data está no formato AAAA-MM-DD e existe no calendário."""
+    
     try:
         valida = date.fromisoformat(data).isoformat() == data
     except (ValueError, TypeError):
@@ -45,14 +47,16 @@ def validar_formato_data(data):
         )
 
 
-def validar_hora(hora):
-        if hora < INICIO_EXPEDIENTE or hora > ULTIMO_ATENDIMENTO:
-            raise EntradaInvalidaError(
-                f"{hora} está fora do horário do expediente.")
+def _validar_hora(hora) -> None:
+    """Valida se a hora está dentro do horário de expediente."""
+
+    if hora < INICIO_EXPEDIENTE or hora > ULTIMO_ATENDIMENTO:
+        raise EntradaInvalidaError(
+            f"{hora} está fora do horário do expediente.")
 
 
-def validar_atendimento_fim_expediente(hora, duracao):
-    """Valida se o término do atendimento está dentro do expediente."""
+def _validar_atendimento_fim_expediente(hora, duracao):
+    """Valida se o término do atendimento está dentro do horário de expediente."""
     
     inicio_em_minutos = hora * HORA_EM_MINUTOS
     termino_em_minutos = inicio_em_minutos + duracao
@@ -61,8 +65,8 @@ def validar_atendimento_fim_expediente(hora, duracao):
         return False
 
 
-def validar_horario_agendamento(hora, duracao):
-    """Valida as regras de horario de funcionamento"""
+def _validar_horario_agendamento(hora, duracao):
+    """Valida se o agendamento está dentro das regras de horario de funcionamento"""
   
     if duracao <= 0:
         raise EntradaInvalidaError(
@@ -76,7 +80,7 @@ def validar_horario_agendamento(hora, duracao):
         raise ValueError(f"Duração inválida: Deve ser entre {DURACAO_BASE} "
                          f"e {DURACAO_MAXIMA} minutos, em múltiplos de {DURACAO_BASE}.")
 
-    if validar_atendimento_fim_expediente(hora, duracao) is False:
+    if _validar_atendimento_fim_expediente(hora, duracao) is False:
         raise ValueError(
             f"Horário fora do expediente: Duração de {duracao} min "
             f"ultrapassa o horário de funcionamento."
@@ -86,7 +90,7 @@ def validar_horario_agendamento(hora, duracao):
     return True
 
 
-def verificar_disponibilidade(profissional, data, hora, duracao):
+def _verificar_disponibilidade(profissional, data, hora, duracao):
     """Impede que o profissional tenha dois atendimentos no mesmo dia e horário."""
     
     inicio = hora * HORA_EM_MINUTOS
@@ -126,10 +130,10 @@ def adicionar_agendamento(paciente, profissional, data, hora, duracao) -> None:
     """
 
     try: 
-        validar_formato_data(data)
-        validar_hora(hora)
-        validar_horario_agendamento(hora, duracao)
-        verificar_disponibilidade(profissional, data, hora, duracao)
+        _validar_formato_data(data)
+        _validar_hora(hora)
+        _validar_horario_agendamento(hora, duracao)
+        _verificar_disponibilidade(profissional, data, hora, duracao)
 
     except ConflitoDeHorarioError as erro:
         print(f"Agendamento recusado para {paciente}: {erro}")
@@ -150,7 +154,18 @@ def adicionar_agendamento(paciente, profissional, data, hora, duracao) -> None:
         print("Atendimento marcado com sucesso para", paciente)
 
 
-def buscar_agendamento(paciente, data, hora):
+def buscar_agendamento(paciente, data, hora) -> Atendimento | None:
+    """Busca um atendimento, caso exista retorna-o.
+
+    Args:
+        paciente (str): Nome do paciente.
+        data (str): Data do agendamento no formato AAAA-MM-DD.
+        hora (int): Hora de início, entre 8 e 17.
+
+    Returns:
+        Atendimento com status 'AGENDADO',
+        None caso não seja encontrado.
+    """
     
     for atendimento in agendamentos:
         if (atendimento.paciente == paciente and
@@ -183,10 +198,10 @@ def remarcar_agendamento(paciente, data, hora, nova_data, nova_hora) -> None:
     """
 
     try: 
-        validar_formato_data(data)
-        validar_hora(hora)
-        validar_formato_data(nova_data)
-        validar_hora(nova_hora)
+        _validar_formato_data(data)
+        _validar_hora(hora)
+        _validar_formato_data(nova_data)
+        _validar_hora(nova_hora)
     except ValueError as erro:
         print(f"Dados inválidos: {erro}")
         return None
@@ -199,8 +214,8 @@ def remarcar_agendamento(paciente, data, hora, nova_data, nova_hora) -> None:
         )
 
     try: 
-        validar_horario_agendamento(hora, atendimento.duracao)
-        verificar_disponibilidade(atendimento.profissional, nova_data, nova_hora, atendimento.duracao)
+        _validar_horario_agendamento(hora, atendimento.duracao)
+        _verificar_disponibilidade(atendimento.profissional, nova_data, nova_hora, atendimento.duracao)
     
     except ConflitoDeHorarioError as erro:
         print(f"Agendamento recusado para {paciente}: {erro}")
@@ -218,6 +233,10 @@ def cancelar_agendamento(paciente, data, hora) -> None:
 
     Valida o formato da data, horário do expediente, antes de localizar 
     e modificar o status do agendamento em questão.
+    
+    Realiza a exclusão lógica do registro, alterando seu status para "CANCELADO"
+    sem removê-lo das registros, preservando o histórico de solicitações.
+
 
     Args:
         paciente (str): Nome do paciente.
@@ -234,8 +253,8 @@ def cancelar_agendamento(paciente, data, hora) -> None:
         ConflitoDeHorarioError: Se o profissional já possuir atendimento no horário.
     """
     try: 
-        validar_formato_data(data)
-        validar_hora(hora)
+        _validar_formato_data(data)
+        _validar_hora(hora)
 
     except ValueError as erro:
         print(f"Dados inválidos: {erro}")
@@ -248,6 +267,8 @@ def cancelar_agendamento(paciente, data, hora) -> None:
             f"{paciente} não tem atendimento em {data} às {hora}h"
         )
     else:
+        # Optou-se pela alteração de status em vez da remoção para manter a 
+        # rastreabilidade e preservar o histórico de atendimentos cancelados.
         atendimento.status = "CANCELADO"
         print(f"Atendimento para {paciente} cancelado com sucesso!")
 
@@ -289,7 +310,7 @@ def relatorio_agendamentos_por_data(data) -> None:
     """
 
     try: 
-        validar_formato_data(data)
+        _validar_formato_data(data)
 
     except ValueError as erro:
         print(f"Dados inválidos: {erro}")
