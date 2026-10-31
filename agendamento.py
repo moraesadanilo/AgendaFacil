@@ -6,7 +6,6 @@ HORA_EM_MINUTOS = 60
 INICIO_EXPEDIENTE = 8
 FIM_EXPEDIENTE = 18
 ULTIMO_ATENDIMENTO = 17
-DURACAO_ATENDIMENTO = 15
 DURACAO_BASE = 15
 DURACAO_MAXIMA = 120
 
@@ -38,7 +37,8 @@ class Atendimento:
         data (str): Data no formato AAAA-MM-DD.
         hora (int): Hora de início no formato inteiro.
         duracao (int): Duração em minutos.
-        status (str): Estado atual do agendamento. O valor padrão é "LIVRE".
+        status (StatusAtendimento): Estado atual do agendamento. 
+                O valor padrão é `StatusAtendimento.LIVRE`.
     """
     paciente: str
     profissional: str
@@ -106,7 +106,7 @@ def _validar_atendimento_fim_expediente(hora, duracao) -> None:
     termino_em_minutos = inicio_em_minutos + duracao
     
     if termino_em_minutos > FIM_EXPEDIENTE * HORA_EM_MINUTOS :
-        raise ConflitoDeHorarioError(
+        raise EntradaInvalidaError(
             f"Atendimento às {hora}h com {duracao}min termina depois "
             f"das {FIM_EXPEDIENTE}h"
         )
@@ -117,13 +117,9 @@ def _validar_duracao(duracao) -> None:
 
     _validar_inteiro("Duração", duracao)
 
-    if duracao <= 0:
-        raise EntradaInvalidaError(
-            f"Duração inválida, valor negativo.")
-
     if duracao % DURACAO_BASE != 0:
         raise EntradaInvalidaError(
-            f"{duracao} não é multipla de {DURACAO_BASE}.")
+            f"{duracao} não é múltiplo de {DURACAO_BASE}.")
 
     if duracao < DURACAO_BASE or duracao > DURACAO_MAXIMA:
         raise EntradaInvalidaError(
@@ -132,7 +128,7 @@ def _validar_duracao(duracao) -> None:
 
 
 def _validar_horario_agendamento(hora, duracao):
-    """Valida se o agendamento está dentro das regras de horario de funcionamento"""
+    """Valida se o agendamento está dentro das regras de horário de funcionamento"""
 
     _validar_hora(hora)
     _validar_duracao(duracao)
@@ -155,7 +151,7 @@ def _verificar_disponibilidade(profissional, data, hora, duracao, ignorar=None):
 
     for atendimento in agendamentos:
         
-        if atendimento == ignorar:
+        if atendimento is ignorar or atendimento.status != StatusAtendimento.AGENDADO:
             continue
 
         if (atendimento.data == data and atendimento.profissional == profissional):
@@ -165,7 +161,7 @@ def _verificar_disponibilidade(profissional, data, hora, duracao, ignorar=None):
 
             if inicio < agendado_fim and agendado_inicio < fim:
                 raise ConflitoDeHorarioError(
-                    f"Horario ocupado! Conflito com atendimento agendado às "
+                    f"Horário ocupado! Conflito com atendimento agendado às "
                     f"{atendimento.hora}h com duração de {atendimento.duracao} min."
                 )
 
@@ -250,7 +246,7 @@ def remarcar_agendamento(paciente, data, hora, nova_data, nova_hora) -> None:
     Raises:
         EntradaInvalidaError: Se a data, hora ou duração forem inválidas.
         ConflitoDeHorarioError: Se o profissional já possuir atendimento no horário.
-        AtendimentoNaoEncontradoError: Se não existeir atendimento para os dados informados.
+        AtendimentoNaoEncontradoError: Se não existir atendimento para os dados informados.
     """
     _validar_string("Paciente", paciente)
     _validar_formato_data(data)
@@ -287,11 +283,9 @@ def cancelar_agendamento(paciente, data, hora) -> None:
 
     Args:
         paciente (str): Nome do paciente.
-        profissional (str): Nome do profissional.
         data (str): Data do agendamento no formato AAAA-MM-DD.
         hora (int): Hora de início, entre 8 e 17.
-        duracao (int): Duração em minutos, de 15 a 120, em múltiplos de 15.
-
+        
     Returns:
         None
 
@@ -340,14 +334,14 @@ def listar_agendamentos_data(data) ->list[Atendimento]:
     return sorted(agendamentos_do_dia, key=lambda atendimento: atendimento.hora)
 
 
-def relatorio_agendamentos_por_data(data) -> None:
+def relatorio_agendamentos_por_data(data) -> str:
     """Gera e exibe em tela o texto formatado com atendimentos do dia.
 
     Args:
         data (str): Dia consultado, no formato AAAA-MM-DD.
 
     Returns:
-        None
+        str: Relatório do dia com texto formatado, ou aviso de que não há agendamentos ativos.
 
     Raises:
         EntradaInvalidaError: Se a data, hora ou duração forem inválidas.
