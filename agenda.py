@@ -50,6 +50,23 @@ class Atendimento:
 
 agendamentos: list[Atendimento] = []
 
+def _validar_string(campo, valor) -> None:
+    """Garante que o campo é uma string não vazia."""
+
+    if type(valor) is not str or not valor.strip():
+        raise EntradaInvalidaError(
+            f"{campo} deve ser um texto não vazio, recebido: {valor!r}"
+        )
+ 
+ 
+def _validar_inteiro(campo, valor) -> None:
+    """Garante que o campo informado é um número inteiro."""
+ 
+    if type(valor) is not int:
+        raise EntradaInvalidaError(
+            f"{campo} deve ser um número inteiro, recebido: {valor!r}"
+        )
+
 
 def _validar_formato_data(data) -> None:
     """Valida se a data está no formato AAAA-MM-DD e existe no calendário."""
@@ -68,6 +85,8 @@ def _validar_formato_data(data) -> None:
 def _validar_hora(hora) -> None:
     """Valida se a hora está dentro do horário de expediente."""
 
+    _validar_inteiro("Hora", hora)
+
     if hora < INICIO_EXPEDIENTE or hora > ULTIMO_ATENDIMENTO:
         raise EntradaInvalidaError(
             f"{hora} está fora do horário do expediente! "
@@ -77,15 +96,17 @@ def _validar_hora(hora) -> None:
 
 def _validar_atendimento_fim_expediente(hora, duracao) -> None:
     """Valida se o término do atendimento está dentro do horário de expediente."""
-
     # A conversão dos horários de início e fim para minutos
     # simplifica a checagem de sobreposição de intervalos.
+
+    _validar_inteiro("Hora", hora)
+    _validar_inteiro("Duração", duracao)
     
     inicio_em_minutos = hora * HORA_EM_MINUTOS
     termino_em_minutos = inicio_em_minutos + duracao
     
     if termino_em_minutos > FIM_EXPEDIENTE * HORA_EM_MINUTOS :
-        raise EntradaInvalidaError(
+        raise ConflitoDeHorarioError(
             f"Atendimento às {hora}h com {duracao}min termina depois "
             f"das {FIM_EXPEDIENTE}h"
         )
@@ -93,6 +114,8 @@ def _validar_atendimento_fim_expediente(hora, duracao) -> None:
     
 def _validar_duracao(duracao) -> None:
     """Garante duração entre 15 e 120 minutos, em múltiplos de 15."""
+
+    _validar_inteiro("Duração", duracao)
 
     if duracao <= 0:
         raise EntradaInvalidaError(
@@ -117,12 +140,15 @@ def _validar_horario_agendamento(hora, duracao):
 
 
 def _verificar_disponibilidade(profissional, data, hora, duracao, ignorar=None):
-    """Impede que o profissional tenha dois atendimentos no mesmo dia e horário."""
+    """ Impede que o profissional tenha dois atendimentos no mesmo dia e horário.
 
-    # A conversão dos horários de início e fim para minutos simplifica a checagem
-    #  de sobreposição de intervalos
-    # Passamos o atendimento antigo no parâmetro 'ignorar' para evitar sobreposição.
-
+    Args:
+        ignorar: atendimento a desconsiderar na checagem (usado ao editar agendamentos).
+    
+    Pré-condição: argumentos já validados pela camada de entrada.
+    
+    Nota: horários são convertidos em minutos facilitar comparação de intervalos.
+    """
     
     inicio = hora * HORA_EM_MINUTOS
     fim = inicio + duracao
@@ -164,7 +190,8 @@ def adicionar_agendamento(paciente, profissional, data, hora, duracao) -> None:
         EntradaInvalidaError: Se a data, hora ou duração forem inválidas.
         ConflitoDeHorarioError: Se o profissional já possuir atendimento no horário.
     """
-
+    _validar_string("Paciente", paciente)
+    _validar_string("Profissional", profissional)
     _validar_formato_data(data)
     _validar_horario_agendamento(hora, duracao)
     _verificar_disponibilidade(profissional, data, hora, duracao)
@@ -225,7 +252,7 @@ def remarcar_agendamento(paciente, data, hora, nova_data, nova_hora) -> None:
         ConflitoDeHorarioError: Se o profissional já possuir atendimento no horário.
         AtendimentoNaoEncontradoError: Se não existeir atendimento para os dados informados.
     """
-
+    _validar_string("Paciente", paciente)
     _validar_formato_data(data)
     _validar_hora(hora)
     _validar_formato_data(nova_data)
@@ -273,7 +300,7 @@ def cancelar_agendamento(paciente, data, hora) -> None:
         ConflitoDeHorarioError: Se o profissional já possuir atendimento no horário.
         AtendimentoNaoEncontradoError: Se não existeir atendimento para os dados informados.    
     """
-
+    _validar_string("Paciente", paciente)
     _validar_formato_data(data)
     _validar_hora(hora)
 
@@ -302,6 +329,7 @@ def listar_agendamentos_data(data) ->list[Atendimento]:
         Lista de Atendimento do dia.
         Lista vazia se não houver nenhum atendimento no dia pesquisado.
     """
+    _validar_formato_data(data)
     
     agendamentos_do_dia =[]
     for atendimento in agendamentos:
@@ -332,7 +360,7 @@ def relatorio_agendamentos_por_data(data) -> None:
     if not agendamentos_hoje:
         return f"Nenhum agendamento ativo encontrado para {data}."
 
-    
+
     linhas = [f"--- AGENDA DO DIA {data} ---"]
     for agendamento in agendamentos_hoje:
         linhas.append(f"{agendamento.hora}h - "
