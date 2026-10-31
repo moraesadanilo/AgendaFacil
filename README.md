@@ -3,7 +3,7 @@
 Agenda de atendimentos de uma clínica pequena: marca, remarca, cancela e
 lista atendimentos em memória.  
 Projeto desenvolvido para disciplina Boas Práticas de Programação (DIMAp/UFRN).
-Este projeto foi refatorado a partir de um código legado, aplicando princípios de modularidade, programação defensiva e documentação em padrão Google.
+Este projeto foi refatorado a partir de um código-base fornecido, aplicando princípios de modularidade, programação defensiva e documentação em padrão Google.
 
 ## Requisitos
 
@@ -20,6 +20,8 @@ Este projeto foi refatorado a partir de um código legado, aplicando princípios
 | `interface.py` | Apresentação no console. Captura `AgendaError` e imprime. |
 | `agenda_app.py` | Programa de demonstração. |
 | `docs/` | Documentação de API gerada (abra `docs/index.html`). |
+| `RELATORIO.pdf` | Diagnóstico do código-base, decisões de projeto e declaração de uso de IA. |
+| `codigo_base/agenda_base.py` | Código-base original, sem alterações (apenas referência). |
 
 ## Como executar
 

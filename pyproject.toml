@@ -1,7 +1,7 @@
 [project]
 name = "agendafacil"
 version = "0.1.0"
-description = "Add your description here"
+description = "Agenda de atendimentos de uma clínica - Projeto Boas Práticas de Programação (DIMAp/UFRN)."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = []
