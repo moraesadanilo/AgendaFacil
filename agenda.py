@@ -112,7 +112,7 @@ def _validar_horario_agendamento(hora, duracao):
     """Valida se o agendamento está dentro das regras de horario de funcionamento"""
 
     _validar_hora(hora)
-    _validar_duração(duracao)
+    _validar_duracao(duracao)
     _validar_atendimento_fim_expediente(hora, duracao)
 
 
@@ -165,28 +165,21 @@ def adicionar_agendamento(paciente, profissional, data, hora, duracao) -> None:
         ConflitoDeHorarioError: Se o profissional já possuir atendimento no horário.
     """
 
-    try: 
-        _validar_formato_data(data)
-        _validar_horario_agendamento(hora, duracao)
-        _verificar_disponibilidade(profissional, data, hora, duracao)
+    _validar_formato_data(data)
+    _validar_horario_agendamento(hora, duracao)
+    _verificar_disponibilidade(profissional, data, hora, duracao)
 
-    except ConflitoDeHorarioError as erro:
-        print(f"Agendamento recusado para {paciente}: {erro}")
-    except ValueError as erro:
-        print(f"Dados inválidos para {paciente}: {erro}")
 
-    else:
-        novo_atendimento = Atendimento(
-            paciente = paciente,
-            profissional = profissional,
-            data = data,
-            hora = hora,
-            duracao = duracao,
-            status = StatusAtendimento.AGENDADO 
-        )
+    novo_atendimento = Atendimento(
+        paciente = paciente,
+        profissional = profissional,
+        data = data,
+        hora = hora,
+        duracao = duracao,
+        status = StatusAtendimento.AGENDADO 
+    )
         
-        agendamentos.append(novo_atendimento)
-        print("Atendimento marcado com sucesso para", paciente)
+    agendamentos.append(novo_atendimento)        
 
 
 def buscar_agendamento(paciente, data, hora) -> Atendimento | None:
@@ -233,14 +226,10 @@ def remarcar_agendamento(paciente, data, hora, nova_data, nova_hora) -> None:
         AtendimentoNaoEncontradoError: Se não existeir atendimento para os dados informados.
     """
 
-    try: 
-        _validar_formato_data(data)
-        _validar_hora(hora)
-        _validar_formato_data(nova_data)
-        _validar_hora(nova_hora)
-    except ValueError as erro:
-        print(f"Dados inválidos: {erro}")
-        return None
+    _validar_formato_data(data)
+    _validar_hora(hora)
+    _validar_formato_data(nova_data)
+    _validar_hora(nova_hora)
 
     atendimento = buscar_agendamento(paciente, data, hora)
 
@@ -249,32 +238,24 @@ def remarcar_agendamento(paciente, data, hora, nova_data, nova_hora) -> None:
             f"{paciente} não tem atendimento em {data} às {hora}h"
         )
 
-    try: 
-        _validar_horario_agendamento(nova_hora, atendimento.duracao)
-        _verificar_disponibilidade(atendimento.profissional,
-                                    nova_data, nova_hora, 
-                                    atendimento.duracao, ignorar=atendimento
-        )
-    
-    except ConflitoDeHorarioError as erro:
-        print(f"Agendamento recusado para {paciente}: {erro}")
-        return None
+    _validar_horario_agendamento(nova_hora, atendimento.duracao)
+    _verificar_disponibilidade(atendimento.profissional,
+                                nova_data, nova_hora, 
+                                atendimento.duracao, ignorar=atendimento
+    )
 
-
-    else: 
-        atendimento.data = nova_data
-        atendimento.hora = nova_hora
-        print(f"Atendimento para {paciente} remarcado com sucesso!")
+    atendimento.data = nova_data
+    atendimento.hora = nova_hora  
 
 
 def cancelar_agendamento(paciente, data, hora) -> None:
-    """Altera o statuas de um atendimento na agenda para cancelado.
+    """Altera o status de um atendimento na agenda para cancelado.
 
     Valida o formato da data, horário do expediente, antes de localizar 
     e modificar o status do agendamento em questão.
     
     Realiza a exclusão lógica do registro, alterando seu status para "CANCELADO"
-    sem removê-lo das registros, preservando o histórico de solicitações.
+    sem removê-lo dos registros, preservando o histórico de solicitações.
 
 
     Args:
@@ -290,14 +271,11 @@ def cancelar_agendamento(paciente, data, hora) -> None:
     Raises:
         EntradaInvalidaError: Se a data, hora ou duração forem inválidas.
         ConflitoDeHorarioError: Se o profissional já possuir atendimento no horário.
+        AtendimentoNaoEncontradoError: Se não existeir atendimento para os dados informados.    
     """
-    try: 
-        _validar_formato_data(data)
-        _validar_hora(hora)
 
-    except ValueError as erro:
-        print(f"Dados inválidos: {erro}")
-        return None
+    _validar_formato_data(data)
+    _validar_hora(hora)
 
     atendimento = buscar_agendamento(paciente, data, hora)
 
@@ -309,11 +287,10 @@ def cancelar_agendamento(paciente, data, hora) -> None:
         # Optou-se pela alteração de status em vez da remoção para manter a 
         # rastreabilidade e preservar o histórico de atendimentos cancelados.
         atendimento.status = StatusAtendimento.CANCELADO
-        print(f"Atendimento para {paciente} cancelado com sucesso!")
 
 
 def listar_agendamentos_data(data) ->list[Atendimento]:
-    """Lista os atendimentos marcados em um dia, na ordem de marcação.
+    """Lista os atendimentos marcados em um dia, na ordem de horário.
 
     Esta função assume que a data fornecida já foi validada previamente
     (formato AAAA-MM-DD e existência no calendário).
@@ -347,22 +324,19 @@ def relatorio_agendamentos_por_data(data) -> None:
     Raises:
         EntradaInvalidaError: Se a data, hora ou duração forem inválidas.
     """
-
-    try: 
-        _validar_formato_data(data)
-
-    except ValueError as erro:
-        print(f"Dados inválidos: {erro}")
-        return None
+ 
+    _validar_formato_data(data)
 
     agendamentos_hoje = listar_agendamentos_data(data)
 
     if not agendamentos_hoje:
-        print(f"Nenhum agendamento ativo encontrado para {data}.")
-    else:
-        print(f"--- AGENDA DO DIA {data} ---")
-        for agendamento in agendamentos_hoje:
-            print(f"{agendamento.hora}h - " 
-                  f"Paciente: {agendamento.paciente} - "
-                  f"Profissional: {agendamento.profissional}")
-        
+        return f"Nenhum agendamento ativo encontrado para {data}."
+
+    
+    linhas = [f"--- AGENDA DO DIA {data} ---"]
+    for agendamento in agendamentos_hoje:
+        linhas.append(f"{agendamento.hora}h - "
+                      f"Paciente: {agendamento.paciente} - "
+                       f"Profissional: {agendamento.profissional}")
+    
+    return "\n".join(linhas)
