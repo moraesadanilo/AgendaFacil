@@ -22,12 +22,14 @@ Este projeto foi refatorado a partir de um código-base fornecido, aplicando pri
 | `docs/` | Documentação de API gerada (abra `docs/index.html`). |
 | `RELATORIO.pdf` | Diagnóstico do código-base, decisões de projeto e declaração de uso de IA. |
 | `codigo_base/agenda_base.py` | Código-base original, sem alterações (apenas referência). |
+| `testes_defensivos.py` | Demonstra a programação defensiva: entradas inválidas e as recusas correspondentes. |
 
 ## Como executar
 
 ```bash
 python agenda_app.py
 ```
+
 
 ## Como gerar a documentação
 A documentação do sistema foi gerada utilizando a biblioteca pdoc. Os arquivos finais em HTML encontram-se na pasta docs/.
@@ -52,6 +54,17 @@ uv pip install pdoc
 python -m pdoc agendamento interface -o docs --docformat google
 ```
 
+## Testes de Programação Defensiva 
+As validações de *Fail Fast* e os cenários de erro foram isolados em um script de demonstração próprio. 
+
+Este script testa inserção de dados inválidos (como datas incorretas e horários fora do expediente), o tratamento de exceções customizadas e a operação de cancelamento (exclusão lógica).
+
+Para executá-lo:
+```bash
+python testes_defensivos.py
+```
+
+
 ## Autor
 
-- Danilo Araujon de Moraes — 20250067023
+- Danilo A. Moraes — 20250067023
